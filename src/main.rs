@@ -9,22 +9,31 @@ use crossterm::terminal::*;
 use crossterm::*;
 
 mod level;
-use level::*;
+use crate::level::*;
 
 fn main() -> crossterm::Result<()> {
     enable_raw_mode().unwrap();
     execute!(
         stdout(),
         terminal::Clear(terminal::ClearType::All),
+        cursor::Hide,
         cursor::MoveTo(0, 0)
     )?;
 
-    let level_start = load_level("level.txt");
+    let level_start = load_level("level2.txt");
     let mut level = level_start.clone();
 
     let mut selected: u8 = 255;
     loop {
         show_level(&level, selected);
+        execute!(
+            stdout(),
+            SetForegroundColor(Color::White),
+            SetBackgroundColor(Color::Black),
+            Print("\r\nA, B ...: move water\r\nR: restart level\r\nESC: end game\r\n"),
+        )
+        .unwrap();
+
         if test_win(&level) {
             execute!(
                 stdout(),
@@ -76,6 +85,10 @@ fn main() -> crossterm::Result<()> {
         }
     }
 
+    execute!(
+        stdout(),
+        cursor::Show,
+    )?;
     disable_raw_mode().unwrap();
 
     Ok(())

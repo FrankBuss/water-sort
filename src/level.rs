@@ -34,7 +34,7 @@ fn get_color(name: u8) -> std::result::Result<Color, &'static str> {
     }
 }
 
-fn show_level(glasses: &Level, selected: u8) {
+pub fn show_level(glasses: &Level, selected: u8) {
     execute!(stdout(), cursor::MoveTo(0, 0)).unwrap();
 
     // show level
@@ -121,7 +121,7 @@ fn show_level(glasses: &Level, selected: u8) {
     }
 }
 
-fn load_level(filename: &str) -> Level {
+pub fn load_level(filename: &str) -> Level {
     let file = File::open(filename).unwrap();
     let lines = io::BufReader::new(file).lines();
     let mut glasses: Level = Vec::new();
@@ -145,7 +145,7 @@ fn load_level(filename: &str) -> Level {
     glasses
 }
 
-fn move_water(glasses: &mut Level, from: usize, to: usize) -> bool {
+pub fn move_water(glasses: &mut Level, from: usize, to: usize) -> bool {
     // test if there is something to move
     if glasses[from][0] == 0 {
         return false;
@@ -209,7 +209,7 @@ fn move_water(glasses: &mut Level, from: usize, to: usize) -> bool {
     }
 }
 
-fn test_win(glasses: &Level) -> bool {
+pub fn test_win(glasses: &Level) -> bool {
     // test if all glasses have the same color
     for glass in glasses {
         let c0 = glass[0];
