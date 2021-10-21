@@ -1,5 +1,3 @@
-use std::fs::File;
-use std::io;
 use std::io::prelude::*;
 use std::io::*;
 
@@ -20,12 +18,12 @@ fn main() -> crossterm::Result<()> {
         cursor::MoveTo(0, 0)
     )?;
 
-    let level_start = load_level("level2.txt");
-    let mut level = level_start.clone();
+    let level = Level::load("level2.txt");
+    level.restart();
 
     let mut selected: u8 = 255;
     loop {
-        show_level(&level, selected);
+        level.show(selected);
         execute!(
             stdout(),
             SetForegroundColor(Color::White),
@@ -34,7 +32,7 @@ fn main() -> crossterm::Result<()> {
         )
         .unwrap();
 
-        if test_win(&level) {
+        if level.test_win() {
             execute!(
                 stdout(),
                 SetForegroundColor(Color::White),
@@ -59,18 +57,18 @@ fn main() -> crossterm::Result<()> {
         }
         match key {
             b'r' => {
-                level = level_start.clone();
+                level.restart();
                 selected = 255;
             }
             _ => {
                 if key >= b'a' {
                     let key = key - b'a';
-                    if key < level.len() as u8 {
+                    if key < level.number_of_glasses() as u8 {
                         if selected == key {
                             selected = 255;
                         } else {
                             if selected < 255 {
-                                if move_water(&mut level, selected as usize, key as usize) {
+                                if level.move_water(selected as usize, key as usize) {
                                     selected = 255;
                                 } else {
                                     selected = key;
