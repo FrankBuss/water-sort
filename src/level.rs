@@ -49,11 +49,10 @@ impl Level {
 
         // https://www.youtube.com/watch?v=QPLgSgklwyk
         let mut i = 0;
-        let mut yofs = 0;
         execute!(stdout(), Print("\r\n"),).unwrap();
-        for row in 0..rows {
+        for _row in 0..rows {
             for y in 0..4 {
-                for y2 in 0..1 {
+                for _y2 in 0..1 {
                     execute!(
                         stdout(),
                         SetForegroundColor(Color::White),
@@ -87,7 +86,7 @@ impl Level {
                 Print(" "),
             )
             .unwrap();
-            for x in 0..first_row {
+            for _x in 0..first_row {
                 execute!(
                     stdout(),
                     SetForegroundColor(Color::White),
@@ -119,7 +118,6 @@ impl Level {
             }
             i += first_row;
             first_row = self.current.len() - first_row;
-            yofs += 11;
             execute!(stdout(), Print("\r\n\r\n"),).unwrap();
         }
     }
@@ -127,7 +125,7 @@ impl Level {
     pub fn load(filename: &str) -> Self {
         let file = File::open(filename).unwrap();
         let lines = io::BufReader::new(file).lines();
-        let level = Level {
+        let mut level = Level {
             loaded: Vec::new(),
             current: Vec::new(),
         };
@@ -151,7 +149,7 @@ impl Level {
         level
     }
 
-    pub fn move_water(&self, from: usize, to: usize) -> bool {
+    pub fn move_water(&mut self, from: usize, to: usize) -> bool {
         // test if there is something to move
         if self.current[from][0] == 0 {
             return false;
@@ -217,7 +215,7 @@ impl Level {
 
     pub fn test_win(&self) -> bool {
         // test if all self.current have the same color
-        for glass in self.current {
+        for glass in &self.current {
             let c0 = glass[0];
             for c in glass {
                 if c0 != *c {
@@ -228,8 +226,8 @@ impl Level {
         true
     }
 
-    pub fn restart(&self) {
-        self.current = self.loaded;
+    pub fn restart(&mut self) {
+        self.current = self.loaded.clone();
     }
 
     pub fn number_of_glasses(&self) -> usize {

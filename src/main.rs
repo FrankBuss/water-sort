@@ -18,7 +18,7 @@ fn main() -> crossterm::Result<()> {
         cursor::MoveTo(0, 0)
     )?;
 
-    let level = Level::load("level2.txt");
+    let mut level = Level::load("level2.txt");
     level.restart();
 
     let mut selected: u8 = 255;
@@ -83,10 +83,7 @@ fn main() -> crossterm::Result<()> {
         }
     }
 
-    execute!(
-        stdout(),
-        cursor::Show,
-    )?;
+    execute!(stdout(), cursor::Show,)?;
     disable_raw_mode().unwrap();
 
     Ok(())
