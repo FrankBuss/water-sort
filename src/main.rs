@@ -1,22 +1,30 @@
+use core::time;
 use std::io::prelude::*;
 use std::io::*;
 
-use crossterm::event::*;
-use crossterm::style::*;
-use crossterm::terminal::*;
-use crossterm::*;
+use crossterm::event::{Event, KeyCode};
+use crossterm::style::{Color, Print, SetBackgroundColor, SetForegroundColor};
+use crossterm::terminal::{self, disable_raw_mode, enable_raw_mode};
+use crossterm::{cursor, execute};
 
 mod level;
-use crate::level::*;
+use crate::level::Level;
 
-fn main() -> crossterm::Result<()> {
+fn main() {
+    // solution from https://www.youtube.com/watch?v=QPLgSgklwyk
+    let solve_keys = "akckfaicdfdjhjgjehbebgbdbkebedgegbcgcicgacakabhahchdfhihicigfa";
+
+    let mut solve = false;
+    let mut solve_index = 0;
+
     enable_raw_mode().unwrap();
     execute!(
         stdout(),
         terminal::Clear(terminal::ClearType::All),
         cursor::Hide,
         cursor::MoveTo(0, 0)
-    )?;
+    )
+    .unwrap();
 
     let mut level = Level::load("level2.txt");
     level.restart();
@@ -28,7 +36,7 @@ fn main() -> crossterm::Result<()> {
             stdout(),
             SetForegroundColor(Color::White),
             SetBackgroundColor(Color::Black),
-            Print("\r\nA, B ...: move water\r\nR: restart level\r\nESC: end game\r\n"),
+            Print("\r\nA, B ...: move water\r\nR: restart level\r\nS: solve level\r\nESC: end game\r\n"),
         )
         .unwrap();
 
@@ -43,22 +51,35 @@ fn main() -> crossterm::Result<()> {
             break;
         }
         let mut key = 0;
-        match crossterm::event::read().unwrap() {
-            Event::Key(event) => match event.code {
-                KeyCode::Esc => {
-                    break;
-                }
-                KeyCode::Char(c) => {
-                    key = c as u8;
-                }
+        if solve {
+            key = solve_keys.as_bytes()[solve_index];
+            std::thread::sleep(time::Duration::from_millis(200));
+            if solve_index < solve_keys.len() - 1 {
+                solve_index += 1;
+            }
+        } else {
+            match crossterm::event::read().unwrap() {
+                Event::Key(event) => match event.code {
+                    KeyCode::Esc => {
+                        break;
+                    }
+                    KeyCode::Char(c) => {
+                        key = c as u8;
+                    }
+                    _ => (),
+                },
                 _ => (),
-            },
-            _ => (),
+            }
         }
         match key {
             b'r' => {
                 level.restart();
                 selected = 255;
+            }
+            b's' => {
+                level.restart();
+                selected = 255;
+                solve = true;
             }
             _ => {
                 if key >= b'a' {
@@ -83,8 +104,9 @@ fn main() -> crossterm::Result<()> {
         }
     }
 
-    execute!(stdout(), cursor::Show,)?;
+    execute!(stdout(), cursor::Show,).unwrap();
     disable_raw_mode().unwrap();
 
-    Ok(())
+    // let s: String = keys.into_iter().collect();
+    //println!("keys: {}", s);
 }

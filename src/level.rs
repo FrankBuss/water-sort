@@ -1,10 +1,10 @@
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
-use std::io::*;
+use std::io::{stdout};
 
-use crossterm::style::*;
-use crossterm::*;
+use crossterm::style::{Color, Print, SetBackgroundColor, SetForegroundColor};
+use crossterm::{execute, cursor};
 
 type Glasses = Vec<Vec<u8>>;
 pub struct Level {
@@ -47,7 +47,6 @@ impl Level {
             first_row += 1;
         }
 
-        // https://www.youtube.com/watch?v=QPLgSgklwyk
         let mut i = 0;
         execute!(stdout(), Print("\r\n"),).unwrap();
         for _row in 0..rows {
