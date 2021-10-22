@@ -1,12 +1,13 @@
+use crossterm::style::{Color, Print, SetBackgroundColor, SetForegroundColor};
+use crossterm::{cursor, execute};
+use std::collections::HashSet;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
-use std::io::{stdout};
+use std::io::stdout;
 
-use crossterm::style::{Color, Print, SetBackgroundColor, SetForegroundColor};
-use crossterm::{execute, cursor};
-
-type Glasses = Vec<Vec<u8>>;
+type Glass = Vec<u8>;
+type Glasses = Vec<Glass>;
 pub struct Level {
     loaded: Glasses,
     current: Glasses,
@@ -132,7 +133,7 @@ impl Level {
             let line = line.unwrap();
             let line = line.trim();
             if line.len() > 0 {
-                let mut glass: Vec<u8> = Vec::new();
+                let mut glass: Glass = Vec::new();
                 let split: Vec<&str> = line.split("=").collect();
                 let colors = split[1].as_bytes();
                 for i in 0..4 {
@@ -231,5 +232,66 @@ impl Level {
 
     pub fn number_of_glasses(&self) -> usize {
         self.current.len()
+    }
+
+    fn solve_impl(
+        &mut self,
+        tested: &mut HashSet<Glasses>,
+        solutions: &mut Vec<Vec<u8>>,
+        solution: &mut Vec<u8>,
+    ) {
+        fn glass_to_u32(glass: &[u8]) -> u32 {
+            (glass[0] as u32)
+                | ((glass[1] as u32) << 8)
+                | ((glass[2] as u32) << 16)
+                | ((glass[3] as u32) << 24)
+        }
+
+        // check all possible moves
+        let last = self.current.clone();
+        let last_solution = solution.clone();
+        for from in 0..self.current.len() {
+            for to in 0..self.current.len() {
+                if from != to {
+                    if self.move_water(from, to) {
+                        // add move
+                        solution.push(from as u8);
+                        solution.push(to as u8);
+
+                        // test if winning solution
+                        if self.test_win() {
+                            solutions.push(solution.clone());
+                        } else {
+                            // sort copy of glasses
+                            let mut copy = self.current.clone();
+                            copy.sort_by(|a, b| glass_to_u32(&a).cmp(&glass_to_u32(&b)));
+
+                            // if not already tested, then test it recursively
+                            if !tested.contains(&copy) {
+                                tested.insert(copy);
+                                self.solve_impl(tested, solutions, solution);
+                            }
+                        }
+
+                        // restore last position
+                        self.current = last.clone();
+                        *solution = last_solution.clone();
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn solve(&mut self) -> String {
+        let mut tested: HashSet<Glasses> = HashSet::new();
+        let mut solutions: Vec<Vec<u8>> = Vec::new();
+        let mut solution: Vec<u8> = Vec::new();
+        self.solve_impl(&mut tested, &mut solutions, &mut solution);
+        solutions.sort_by(|a,b|a.len().cmp(&b.len()));
+        if solutions.is_empty() {
+            "".to_string()
+        } else {
+            solutions[0].iter().map(|&c|(c+b'a') as char).collect()
+        }
     }
 }

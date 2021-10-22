@@ -12,7 +12,10 @@ use crate::level::Level;
 
 fn main() {
     // solution from https://www.youtube.com/watch?v=QPLgSgklwyk
-    let solve_keys = "akckfaicdfdjhjgjehbebgbdbkebedgegbcgcicgacakabhahchdfhihicigfa";
+    // "akckfaicdfdjhjgjehbebgbdbkebedgegbcgcicgacakabhahchdfhihicigfa";
+    // solution calcuated by this program:
+    // "ajakfkdfgdjadjhjehbebgdbadeaebgeagfahfhkbhcbiciaikcicacibd";
+    let mut solve_keys = "".to_string();
 
     let mut solve = false;
     let mut solve_index = 0;
@@ -77,9 +80,14 @@ fn main() {
                 selected = 255;
             }
             b's' => {
-                level.restart();
-                selected = 255;
-                solve = true;
+                solve_keys = level.solve();
+                //println!("{}", solve_keys);
+                //break;
+                if solve_keys.len() > 0 {
+                    level.restart();
+                    selected = 255;
+                    solve = true;
+                }
             }
             _ => {
                 if key >= b'a' {
@@ -106,7 +114,4 @@ fn main() {
 
     execute!(stdout(), cursor::Show,).unwrap();
     disable_raw_mode().unwrap();
-
-    // let s: String = keys.into_iter().collect();
-    //println!("keys: {}", s);
 }
