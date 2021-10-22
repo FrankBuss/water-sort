@@ -6,7 +6,7 @@ use std::io;
 use std::io::prelude::*;
 use std::io::stdout;
 
-type Glass = Vec<u8>;
+type Glass = [u8; 4];
 type Glasses = Vec<Glass>;
 pub struct Level {
     loaded: Glasses,
@@ -133,14 +133,12 @@ impl Level {
             let line = line.unwrap();
             let line = line.trim();
             if line.len() > 0 {
-                let mut glass: Glass = Vec::new();
+                let mut glass: Glass = Default::default();
                 let split: Vec<&str> = line.split("=").collect();
                 let colors = split[1].as_bytes();
                 for i in 0..4 {
                     if colors.len() > i {
-                        glass.push(colors[i]);
-                    } else {
-                        glass.push(0);
+                        glass[i] = colors[i];
                     }
                 }
                 level.loaded.push(glass);
@@ -264,7 +262,7 @@ impl Level {
                         } else {
                             // sort copy of glasses
                             let mut copy = self.current.clone();
-                            copy.sort_by(|a, b| glass_to_u32(&a).cmp(&glass_to_u32(&b)));
+                            copy.sort_by_key(|a| glass_to_u32(a));
 
                             // if not already tested, then test it recursively
                             if !tested.contains(&copy) {
@@ -287,11 +285,11 @@ impl Level {
         let mut solutions: Vec<Vec<u8>> = Vec::new();
         let mut solution: Vec<u8> = Vec::new();
         self.solve_impl(&mut tested, &mut solutions, &mut solution);
-        solutions.sort_by(|a,b|a.len().cmp(&b.len()));
+        solutions.sort_by_key(|a| a.len());
         if solutions.is_empty() {
             "".to_string()
         } else {
-            solutions[0].iter().map(|&c|(c+b'a') as char).collect()
+            solutions[0].iter().map(|&c| (c + b'a') as char).collect()
         }
     }
 }

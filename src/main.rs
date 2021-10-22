@@ -16,10 +16,25 @@ fn main() {
     // solution calcuated by this program:
     // "ajakfkdfgdjadjhjehbebgdbadeaebgeagfahfhkbhcbiciaikcicacibd";
     let mut solve_keys = "".to_string();
-
     let mut solve = false;
     let mut solve_index = 0;
+    let mut selected: u8 = 255;
 
+    // load level
+    let mut level = Level::load("level2.txt");
+    level.restart();
+
+    // timing test
+    /*
+    let start = Instant::now();
+    let solution = level.solve();
+    let duration = start.elapsed();
+    println!("solution: {}", solution);
+    println!("time: {:?}", duration);
+    process::exit(0);
+    */
+
+    // enable raw mode for keyboard input, and clear screen and hide cursor
     enable_raw_mode().unwrap();
     execute!(
         stdout(),
@@ -29,10 +44,7 @@ fn main() {
     )
     .unwrap();
 
-    let mut level = Level::load("level2.txt");
-    level.restart();
-
-    let mut selected: u8 = 255;
+    // main game loop
     loop {
         level.show(selected);
         execute!(
