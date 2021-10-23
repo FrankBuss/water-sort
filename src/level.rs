@@ -1,10 +1,8 @@
-use crossterm::style::{Color, Print, SetBackgroundColor, SetForegroundColor};
-use crossterm::{cursor, execute};
 use std::collections::HashSet;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
-use std::io::stdout;
+use bevy::prelude::*;
 
 type Glass = [u8; 4];
 type Glasses = Vec<Glass>;
@@ -13,31 +11,17 @@ pub struct Level {
     current: Glasses,
 }
 
-fn hex_to_color(color: u32) -> Color {
-    Color::Rgb {
-        r: ((color >> 16) & 0xff) as u8,
-        g: ((color >> 8) & 0xff) as u8,
-        b: (color & 0xff) as u8,
-    }
-}
 
-fn get_color(name: u8) -> std::result::Result<Color, &'static str> {
-    match name {
-        b'r' => Ok(hex_to_color(0xff0000)), // red
-        b'b' => Ok(hex_to_color(0x4040ff)), // blue
-        b'o' => Ok(hex_to_color(0xED872D)), // orange
-        b'p' => Ok(hex_to_color(0xF19CBB)), // pink
-        b'g' => Ok(hex_to_color(0x54626F)), // gray
-        b'a' => Ok(hex_to_color(0x8DB600)), // apple green
-        b'l' => Ok(hex_to_color(0xBFFF00)), // light green
-        b'c' => Ok(hex_to_color(0x00FFFF)), // cyan
-        b'v' => Ok(hex_to_color(0x9400D3)), // violet
-        0 => Ok(hex_to_color(0)),           // background
-        _ => Err("unknown color name"),
-    }
+fn hex_to_color(color: u32) -> Color {
+    Color::rgb (
+        (((color >> 16) & 0xff) as f32) / 256.0,
+        (((color >> 8) & 0xff) as f32) / 256.0,
+        ((color & 0xff) as f32) / 256.0
+    )
 }
 
 impl Level {
+    /*
     pub fn show(&self, selected: u8) {
         execute!(stdout(), cursor::MoveTo(0, 0)).unwrap();
 
@@ -121,6 +105,23 @@ impl Level {
             execute!(stdout(), Print("\r\n\r\n"),).unwrap();
         }
     }
+    */
+
+    pub fn get_color(&self, x:usize,y:usize) -> Option<Color> {
+        let name = self.current[x][y];
+        match name {
+            b'r' => Some(hex_to_color(0xff0000)), // red
+            b'b' => Some(hex_to_color(0x4040ff)), // blue
+            b'o' => Some(hex_to_color(0xED872D)), // orange
+            b'p' => Some(hex_to_color(0xF19CBB)), // pink
+            b'g' => Some(hex_to_color(0x54626F)), // gray
+            b'a' => Some(hex_to_color(0x8DB600)), // apple green
+            b'l' => Some(hex_to_color(0xBFFF00)), // light green
+            b'c' => Some(hex_to_color(0x00FFFF)), // cyan
+            b'v' => Some(hex_to_color(0x9400D3)), // violet
+            _ => None
+        }
+    }
 
     pub fn load(filename: &str) -> Self {
         let file = File::open(filename).unwrap();
@@ -144,6 +145,7 @@ impl Level {
                 level.loaded.push(glass);
             }
         }
+        level.restart();
         level
     }
 

@@ -3,10 +3,6 @@ name = "water-sort"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-
-[dependencies.crossterm]
-version = "0.17"
-features = ["event-stream"] 
+bevy = { version = "0.5.0", features = ["dynamic"] }
+bevy_mod_picking = "0.4"
