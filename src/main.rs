@@ -20,7 +20,7 @@ fn main() {
         .add_plugin(HighlightablePickingPlugin)
         .add_startup_system(setup.system())
         .add_system(show_level.system())
-        //        .add_system_to_stage(CoreStage::PostUpdate, print_events)
+        .add_system_to_stage(CoreStage::PostUpdate, print_events.system())
         .run();
 }
 
@@ -63,9 +63,21 @@ fn setup(
     });
      */
 
-    let mut add_box = |color: Color, x0: f32, y0: f32, z0: f32, x1: f32, y1: f32, z1: f32| {
-        commands
-            .spawn_bundle(PbrBundle {
+    let level = Level::load("level2.txt");
+    let scale = 10.0 / (level.number_of_glasses() as f32);
+
+    // cubes
+    let box_size = scale * 0.6;
+    let x_start = -5.0;
+    let y_start = 0.0;
+    let zp = 1.0;
+    for x in 0..level.number_of_glasses() {
+        let xp = x_start + (x as f32) * scale;
+        let yp = y_start;
+        let wall = 1.0 / 10.0 * scale;
+        let color = Color::rgb(1.0, 1.0, 1.0);
+        let mut add_box = |color: Color, x0: f32, y0: f32, z0: f32, x1: f32, y1: f32, z1: f32| {
+            commands.spawn_bundle(PbrBundle {
                 mesh: meshes.add(Mesh::from(shape::Box {
                     min_x: x0,
                     min_y: y0,
@@ -77,20 +89,9 @@ fn setup(
                 material: materials.add(color.into()),
                 //transform: Transform::from_xyz(x, y, 0.0),
                 ..Default::default()
-            })
-            .insert_bundle(PickableBundle::default());
-    };
+            });
+        };
 
-    let level = Level::load("level2.txt");
-    let scale = 10.0 / (level.number_of_glasses() as f32);
-
-    // cubes
-    let box_size = scale * 0.6;
-    let x_start = -5.0;
-    let y_start = 0.0;
-    let zp = 1.0;
-    for x in 0..level.number_of_glasses() {
-        let xp = x_start + (x as f32) * scale;
         for y in 0..4 {
             if let Some(color) = level.get_color(x, y) {
                 let wp = WaterPos { x: x, y: y };
@@ -106,9 +107,6 @@ fn setup(
                 );
             }
         }
-        let yp = y_start;
-        let wall = 1.0 / 10.0 * scale;
-        let color = Color::rgb(1.0, 1.0, 1.0);
         add_box(
             color,
             xp - wall,
@@ -128,6 +126,20 @@ fn setup(
             zp + box_size,
         );
         add_box(color, xp, yp - wall, zp, xp + box_size, yp, zp + box_size);
+        commands
+            .spawn_bundle(PbrBundle {
+                mesh: meshes.add(Mesh::from(shape::Box {
+                    min_x: xp - wall,
+                    min_y: yp - wall,
+                    min_z: zp,
+                    max_x: xp + box_size + wall,
+                    max_y: yp + 4.0 * box_size + wall,
+                    max_z: zp + box_size,
+                })),
+                material: materials.add(Color::rgba(0.0, 0.0, 0.0, 0.0).into()),
+                ..Default::default()
+            })
+            .insert_bundle(PickableBundle::default());
     }
     commands.spawn().insert(level);
 
