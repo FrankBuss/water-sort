@@ -1,10 +1,16 @@
-use bevy::prelude::*;
+use std::time::Duration;
+
+use bevy::{prelude::*, window::WindowMode};
 use bevy_mod_picking::{
     InteractablePickingPlugin, PickableBundle, PickingCameraBundle, PickingPlugin, Selection,
 };
+//use bevy::app::AppExit;
+
+mod ui;
+use ui::*;
 
 mod level;
-use crate::level::*;
+use level::*;
 
 struct GlassIndex {
     i: usize,
@@ -12,6 +18,41 @@ struct GlassIndex {
 
 struct FirstSelectedGlass {
     i: Option<usize>,
+}
+
+/*
+fn exit_system(mut exit: EventWriter<AppExit>) {
+    exit.send(AppExit);
+}
+*/
+
+fn main() {
+    App::build()
+        .insert_resource(WindowDescriptor {
+            title: "Water Sort".to_string(),
+            mode: WindowMode::BorderlessFullscreen,
+            width: 800.0,
+            height: 400.0,
+            ..Default::default()
+        })
+        .insert_resource(Msaa { samples: 4 })
+        .add_plugins(DefaultPlugins)
+        .add_plugin(PickingPlugin)
+        .add_plugin(InteractablePickingPlugin)
+        .add_plugin(UIPlugin)
+        .insert_resource(FirstSelectedGlass { i: None })
+        .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
+        .add_startup_system(setup.system())
+        .add_system(select_glass.system())
+        .insert_resource(Autoplay {
+            timer: Timer::from_seconds(0.2, true),
+            moves: Vec::new(),
+            running: false,
+            select_first: true,
+        })
+        .add_system(autoplay.system())
+        .add_system(bevy::input::system::exit_on_esc_system.system())
+        .run();
 }
 
 fn add_box(
@@ -45,11 +86,18 @@ fn add_box(
 }
 
 fn show_level(
+    entities: &Query<Entity, With<GlassIndex>>,
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
     level: &Level,
 ) {
+    // remove old graphics
+    for entity in entities.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
+
+    // create new graphics
     let scale = 10.0 / (level.number_of_glasses() as f32);
     let box_size = scale * 0.6;
     let x_start = -5.0;
@@ -131,6 +179,7 @@ fn show_level(
 }
 
 fn setup(
+    entities: Query<Entity, With<GlassIndex>>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -142,8 +191,14 @@ fn setup(
         .spawn_bundle(camera)
         .insert_bundle(PickingCameraBundle::default());
 
-    let level = Level::load("level2.txt");
-    show_level(&mut commands, &mut meshes, &mut materials, &level);
+    let level = Level::load();
+    show_level(
+        &entities,
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+        &level,
+    );
     commands.spawn().insert(level);
 
     // light
@@ -161,44 +216,91 @@ fn select_glass(
     mut level_query: Query<&mut Level>,
     mut first: ResMut<FirstSelectedGlass>,
     entities: Query<Entity, With<GlassIndex>>,
+    autoplay: ResMut<Autoplay>,
 ) {
     let mut level = level_query.single_mut().expect("level missing");
     for (glass, mut selection, mut transform) in glasses_query.iter_mut() {
-        if selection.selected() {
-            if let Some(from) = first.i {
-                let to = glass.i;
-                if to != from {
-                    first.i = None;
-                    level.move_water(from, to);
-                    for entity in entities.iter() {
-                        commands.entity(entity).despawn_recursive();
+        if !autoplay.running {
+            if selection.selected() {
+                if let Some(from) = first.i {
+                    let to = glass.i;
+                    if to != from {
+                        first.i = None;
+                        level.move_water(from, to);
+                        show_level(
+                            &entities,
+                            &mut commands,
+                            &mut meshes,
+                            &mut materials,
+                            &level,
+                        );
+                        selection.set_selected(false);
                     }
-                    show_level(&mut commands, &mut meshes, &mut materials, &level);
-                    selection.set_selected(false);
+                } else {
+                    first.i = Some(glass.i);
                 }
-            } else {
-                first.i = Some(glass.i);
             }
         }
         transform.translation.y = if selection.selected() { 0.2 } else { 0.0 }
     }
 }
 
-fn main() {
-    App::build()
-        .insert_resource(WindowDescriptor {
-            title: "Water Move".to_string(),
-            width: 800.0,
-            height: 400.0,
-            ..Default::default()
-        })
-        .insert_resource(FirstSelectedGlass { i: None })
-        .insert_resource(Msaa { samples: 4 })
-        .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
-        .add_plugins(DefaultPlugins)
-        .add_plugin(PickingPlugin)
-        .add_plugin(InteractablePickingPlugin)
-        .add_startup_system(setup.system())
-        .add_system(select_glass.system())
-        .run();
+struct Move {
+    from: usize,
+    to: usize,
+}
+
+struct Autoplay {
+    timer: Timer,
+    moves: Vec<Move>,
+    running: bool,
+    select_first: bool,
+}
+
+fn autoplay(
+    mut autoplay: ResMut<Autoplay>,
+    time: Res<Time>,
+    entities: Query<Entity, With<GlassIndex>>,
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut level_query: Query<&mut Level>,
+    mut glasses_query: Query<(&GlassIndex, &mut Selection, &Transform)>,
+) {
+    if autoplay.running {
+        if autoplay.moves.len() == 0 {
+            autoplay.running = false;
+        } else {
+            autoplay
+                .timer
+                .tick(Duration::from_secs_f32(time.delta_seconds()));
+            if !autoplay.timer.just_finished() {
+                return;
+            }
+
+            let mut m: usize = autoplay.moves[0].from;
+            if autoplay.select_first {
+                for (_glass, mut selection, _transform) in glasses_query.iter_mut() {
+                    if m == 0 as usize {
+                        selection.set_selected(true);
+                        break;
+                    }
+                    m -= 1;
+                }
+                autoplay.select_first = false;
+            } else {
+                let m = autoplay.moves.remove(0);
+                let mut level = level_query.single_mut().expect("level missing");
+                level.move_water(m.from, m.to);
+                show_level(
+                    &entities,
+                    &mut commands,
+                    &mut meshes,
+                    &mut materials,
+                    &level,
+                );
+                autoplay.select_first = true;
+            }
+        }
+    }
 }

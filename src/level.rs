@@ -1,8 +1,5 @@
-use std::collections::HashSet;
-use std::fs::File;
-use std::io;
-use std::io::prelude::*;
 use bevy::prelude::*;
+use std::collections::HashSet;
 
 type Glass = [u8; 4];
 type Glasses = Vec<Glass>;
@@ -11,17 +8,16 @@ pub struct Level {
     current: Glasses,
 }
 
-
 fn hex_to_color(color: u32) -> Color {
-    Color::rgb (
+    Color::rgb(
         (((color >> 16) & 0xff) as f32) / 256.0,
         (((color >> 8) & 0xff) as f32) / 256.0,
-        ((color & 0xff) as f32) / 256.0
+        ((color & 0xff) as f32) / 256.0,
     )
 }
 
 impl Level {
-    pub fn get_color(&self, x:usize,y:usize) -> Option<Color> {
+    pub fn get_color(&self, x: usize, y: usize) -> Option<Color> {
         let name = self.current[x][y];
         match name {
             b'r' => Some(hex_to_color(0xff0000)), // red
@@ -33,19 +29,31 @@ impl Level {
             b'l' => Some(hex_to_color(0xBFFF00)), // light green
             b'c' => Some(hex_to_color(0x00FFFF)), // cyan
             b'v' => Some(hex_to_color(0x9400D3)), // violet
-            _ => None
+            _ => None,
         }
     }
 
-    pub fn load(filename: &str) -> Self {
-        let file = File::open(filename).unwrap();
-        let lines = io::BufReader::new(file).lines();
+    pub fn load() -> Self {
+        let level = r#"
+        g=orbr
+        g=rapo
+        g=gcgr
+        g=allc
+        g=paov
+        g=vvcb
+        g=oppl
+        g=abvl
+        g=gbcg
+        g=
+        g=
+            "#;
+        let lines = level.split("\n");
         let mut level = Level {
             loaded: Vec::new(),
             current: Vec::new(),
         };
         for line in lines {
-            let line = line.unwrap();
+            //let line = line.unwrap();
             let line = line.trim();
             if line.len() > 0 {
                 let mut glass: Glass = Default::default();
