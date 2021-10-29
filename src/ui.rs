@@ -23,6 +23,8 @@ enum GameButton {
     Solution,
 }
 
+struct LevelInfoMarker;
+
 impl GameButton {
     fn name(&self) -> String {
         match self {
@@ -97,6 +99,26 @@ fn init_ui(
         &asset_server,
         &button_materials,
     );
+
+    menu_bar.with_children(|parent| {
+        parent
+            .spawn_bundle(TextBundle {
+                text: Text {
+                    sections: vec![TextSection {
+                        value: "Level".to_string(),
+                        style: TextStyle {
+                            font: asset_server.load("fonts/DejaVuSans.ttf"),
+                            font_size: 40.0,
+                            color: Color::rgb(0.5, 0.5, 1.0),
+                        },
+                    }],
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .insert(LevelInfoMarker {});
+    });
+
     add_button(
         GameButton::Solution,
         &mut menu_bar,
@@ -143,6 +165,7 @@ fn button_press_system(
                 GameButton::Restart => {
                     if !autoplay.running {
                         level.restart();
+                        //level.mix_once();
                         show_level(
                             &entities,
                             &mut commands,
@@ -154,7 +177,13 @@ fn button_press_system(
                 }
                 GameButton::Solution => {
                     level.restart();
-                    let solution = level.solve();
+                    let (solution, len) = level.solve();
+                    println!("{} combinations tested", len);
+                    if solution.len() > 0 {
+                        println!("solution: {}", solution);
+                    } else {
+                        println!("no solution found");
+                    }
                     let sb = solution.as_bytes();
                     for i in 0..(sb.len() / 2) {
                         let from = sb[2 * i] - b'a';
@@ -172,12 +201,19 @@ fn button_press_system(
     }
 }
 
+fn level_info(level_query: Query<&Level>, mut query: Query<(&mut Text, &LevelInfoMarker)>) {
+    let level = level_query.single().expect("level missing");
+    let (mut text, _marker) = query.single_mut().unwrap();
+    text.sections[0].value = format!("Level: {}", level.number + 1);
+}
+
 pub struct UIPlugin;
 impl Plugin for UIPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app.init_resource::<ButtonMaterials>()
             .add_startup_system(init_ui.system())
             .add_system(button_system.system())
-            .add_system(button_press_system.system());
+            .add_system(button_press_system.system())
+            .add_system(level_info.system());
     }
 }

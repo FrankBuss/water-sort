@@ -30,9 +30,9 @@ fn main() {
     App::build()
         .insert_resource(WindowDescriptor {
             title: "Water Sort".to_string(),
-            mode: WindowMode::BorderlessFullscreen,
-            width: 800.0,
-            height: 400.0,
+            mode: WindowMode::Windowed,
+            width: 1200.0,
+            height: 600.0,
             ..Default::default()
         })
         .insert_resource(Msaa { samples: 4 })
@@ -98,7 +98,10 @@ fn show_level(
     }
 
     // create new graphics
-    let scale = 10.0 / (level.number_of_glasses() as f32);
+    let mut scale = 10.0 / (level.number_of_glasses() as f32);
+    if scale > 1.0 {
+        scale = 1.0;
+    }
     let box_size = scale * 0.6;
     let x_start = -5.0;
     let y_start = 0.0;
@@ -191,7 +194,7 @@ fn setup(
         .spawn_bundle(camera)
         .insert_bundle(PickingCameraBundle::default());
 
-    let level = Level::load();
+    let level = Level::load(0);
     show_level(
         &entities,
         &mut commands,
@@ -206,6 +209,13 @@ fn setup(
         transform: Transform::from_xyz(3.0, 8.0, 5.0),
         ..Default::default()
     });
+}
+
+fn move_water(level:&mut Level, from:usize, to:usize) {
+    level.move_water(from, to);
+    if level.test_win() {
+        level.load_next();
+    }
 }
 
 fn select_glass(
@@ -226,7 +236,7 @@ fn select_glass(
                     let to = glass.i;
                     if to != from {
                         first.i = None;
-                        level.move_water(from, to);
+                        move_water(&mut level, from, to);
                         show_level(
                             &entities,
                             &mut commands,
@@ -291,7 +301,7 @@ fn autoplay(
             } else {
                 let m = autoplay.moves.remove(0);
                 let mut level = level_query.single_mut().expect("level missing");
-                level.move_water(m.from, m.to);
+                move_water(&mut level, m.from, m.to);
                 show_level(
                     &entities,
                     &mut commands,
