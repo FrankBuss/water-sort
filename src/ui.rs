@@ -164,8 +164,8 @@ fn button_press_system(
             match button {
                 GameButton::Restart => {
                     if !autoplay.running {
-                        level.restart();
-                        //level.mix_once();
+                        //level.restart();
+                        level.mix();
                         show_level(
                             &entities,
                             &mut commands,

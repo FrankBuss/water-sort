@@ -213,6 +213,7 @@ fn setup(
 
 fn move_water(level:&mut Level, from:usize, to:usize) {
     level.move_water(from, to);
+    //level.move_reverse(from, to, 2);
     if level.test_win() {
         level.load_next();
     }
