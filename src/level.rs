@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use rand::prelude::SliceRandom;
 use rand::Rng;
 use std::cmp;
 use std::collections::HashSet;
@@ -420,47 +421,43 @@ impl Level {
     // mixes the water for a new level
     pub fn mix(&mut self) {
         // create target
-        //let colors = "orbaplcvg";
-        let colors = "orba";
-        let mut glass_empty: Glass = Default::default();
-        for i in 0..4 {
-            glass_empty[i] = 0;
-        }
-        self.loaded = Vec::new();
+        let mut rng = rand::thread_rng();
+        let colors = "orbaplcvg";
+        //let colors = "orba";
+
+        let mut mixed = Vec::new();
         for c in 0..colors.len() {
-            let mut glass: Glass = Default::default();
-            for i in 0..4 {
-                glass[i] = colors.as_bytes()[c] as u8;
+            for _ in 0..4 {
+                mixed.push(colors.as_bytes()[c] as u8);
             }
-            self.loaded.push(glass);
         }
-        self.loaded.push(glass_empty);
-        self.loaded.push(glass_empty);
 
-        // recursively move backwards from target for the current level
-        let mut solutions: Vec<Glasses> = Vec::new();
-        let mut tested: HashSet<Glasses> = HashSet::new();
-        self.current = self.loaded.clone();
-        self.mix_impl(&mut tested, 0, &mut solutions);
-
-        // set current level as new loaded level
-        println!("{} configurations tested", tested.len());
-        if solutions.len() > 0 {
-            println!("{} solutions found", solutions.len());
-            let mut max: usize = 0;
-            let mut max_solution = solutions[0].clone();
-            for s in solutions {
-                self.current = s.clone();
-                let (keys, _size) = self.solve();
-                if keys.len() > max {
-                    max_solution = s;
-                    max = keys.len();
-                }
+        let mut count = 0;
+        loop {
+            mixed.shuffle(&mut rng);
+            let mut glass_empty: Glass = Default::default();
+            for i in 0..4 {
+                glass_empty[i] = 0;
             }
-            self.loaded = max_solution;
-            println!("solution length: {}", max);
-        } else {
-            println!("no solutions found");
+            self.loaded = Vec::new();
+            for c in 0..colors.len() {
+                let mut glass: Glass = Default::default();
+                for i in 0..4 {
+                    glass[i] = mixed[c * 4 + i];
+                }
+                self.loaded.push(glass);
+            }
+            self.loaded.push(glass_empty);
+            self.loaded.push(glass_empty);
+
+            // recursively move backwards from target for the current level
+            self.current = self.loaded.clone();
+            let (keys, _size) = self.solve();
+            count += 1;
+            if keys.len() > 0 {
+                println!("solution length: {}, tries: {}", keys.len(), count);
+                break;
+            }
         }
         self.restart();
     }
