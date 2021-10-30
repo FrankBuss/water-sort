@@ -1,10 +1,10 @@
-use std::time::Duration;
+use std::io::{self, Write};
+use std::time::{Duration, Instant};
 
 use bevy::{prelude::*, window::WindowMode};
 use bevy_mod_picking::{
     InteractablePickingPlugin, PickableBundle, PickingCameraBundle, PickingPlugin, Selection,
 };
-//use bevy::app::AppExit;
 
 mod ui;
 use ui::*;
@@ -194,6 +194,13 @@ fn setup(
         .spawn_bundle(camera)
         .insert_bundle(PickingCameraBundle::default());
 
+    // light
+    commands.spawn_bundle(LightBundle {
+        transform: Transform::from_xyz(3.0, 8.0, 5.0),
+        ..Default::default()
+    });
+
+    // create and show first level
     let level = Level::load(0);
     show_level(
         &entities,
@@ -203,15 +210,9 @@ fn setup(
         &level,
     );
     commands.spawn().insert(level);
-
-    // light
-    commands.spawn_bundle(LightBundle {
-        transform: Transform::from_xyz(3.0, 8.0, 5.0),
-        ..Default::default()
-    });
 }
 
-fn move_water(level:&mut Level, from:usize, to:usize) {
+fn move_water(level: &mut Level, from: usize, to: usize) {
     level.move_water(from, to);
     //level.move_reverse(from, to, 2);
     if level.test_win() {
@@ -313,5 +314,25 @@ fn autoplay(
                 autoplay.select_first = true;
             }
         }
+    }
+}
+
+#[test]
+fn benchmark() {
+    println!("level,time,level size,number of configurations,solution length");
+    for i in 0..1000000 {
+        let start = Instant::now();
+        let mut level = Level::load(i);
+        let elapsed = start.elapsed().as_secs_f32();
+        let (keys, configurations) = level.solve();
+        println!(
+            "{},{},{},{},{}",
+            i + 1,
+            elapsed,
+            level.number_of_glasses(),
+            configurations,
+            keys.len()
+        );
+        io::stdout().flush().unwrap();
     }
 }

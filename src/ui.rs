@@ -164,8 +164,7 @@ fn button_press_system(
             match button {
                 GameButton::Restart => {
                     if !autoplay.running {
-                        //level.restart();
-                        level.mix();
+                        level.restart();
                         show_level(
                             &entities,
                             &mut commands,
@@ -177,13 +176,22 @@ fn button_press_system(
                 }
                 GameButton::Solution => {
                     level.restart();
-                    let (solution, len) = level.solve();
+                    show_level(
+                        &entities,
+                        &mut commands,
+                        &mut meshes,
+                        &mut materials,
+                        &level,
+                    );
+                    let (solution, _len) = level.solve();
+                    /*
                     println!("{} combinations tested", len);
                     if solution.len() > 0 {
                         println!("solution: {}", solution);
                     } else {
                         println!("no solution found");
                     }
+                    */
                     let sb = solution.as_bytes();
                     for i in 0..(sb.len() / 2) {
                         let from = sb[2 * i] - b'a';
