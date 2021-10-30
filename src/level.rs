@@ -55,6 +55,9 @@ impl GlassExt for Glass {
     /// return true, if the glass is full with one color
     fn is_one_color(&self) -> bool {
         let color = self[0];
+        if self[0] == 0 {
+            return false;
+        }
         for i in 1..4 {
             if self[i] != color {
                 return false;
@@ -109,6 +112,15 @@ impl Level {
         let level = Level::load(self.number);
         self.current = level.current.clone();
         self.loaded = level.loaded.clone();
+    }
+
+    fn is_one_glass_same_color(&mut self) -> bool {
+        for i in 0..self.current.len() {
+            if self.current[i].is_one_color() {
+                return true;
+            }
+        }
+        false
     }
 
     pub fn load(level_number: usize) -> Self {
@@ -179,7 +191,7 @@ impl Level {
             // break if a solution was found
             level.current = level.loaded.clone();
             let (keys, _size) = level.solve();
-            if keys.len() > 0 {
+            if keys.len() > 0 && !level.is_one_glass_same_color() {
                 break;
             } else {
                 if empty_count < 2 {
@@ -191,39 +203,6 @@ impl Level {
         level
     }
 
-    /// get last color and fill level of glass
-    fn get_color_and_level(&self, glass_index: usize) -> (u8, usize) {
-        let mut i = 0;
-        let mut color = 0;
-        while i < 4 {
-            if self.current[glass_index][i] > 0 {
-                color = self.current[glass_index][i];
-            } else {
-                break;
-            }
-            i += 1;
-        }
-        (color, i)
-    }
-
-    /// count number of same water color, starting at the given index and iterating down
-    fn count_water_color(&self, glass_index: usize, color: u8, start_index: usize) -> usize {
-        let mut count = 0;
-        let mut i = start_index;
-        loop {
-            if self.current[glass_index][i] == color {
-                count += 1;
-            } else {
-                break;
-            }
-            if i == 0 {
-                break;
-            }
-            i -= 1;
-        }
-        count
-    }
-
     pub fn move_water(&mut self, from: usize, to: usize) -> bool {
         // test if there is something to move
         if self.current[from][0] == 0 {
@@ -231,27 +210,16 @@ impl Level {
         }
 
         // get last color from where to move
-        let (from_color, mut i) = self.get_color_and_level(from);
-        i -= 1;
-        let mut from_top = i;
-
-        // count how many to move
-        let mut count = self.count_water_color(from, from_color, from_top);
+        let (from_top_color, from_top_count, from_empty_count) = self.current[from].info();
 
         // get last color of destination glass
-        let (to_color, mut i) = self.get_color_and_level(to);
+        let (to_top_color, _to_top_count, to_empty_count) = self.current[to].info();
 
         // move, if target is empty, or if it is the same color and if there is enough room
-        if to_color == 0 || to_color == from_color && 4 - i >= count {
-            loop {
-                self.current[from][from_top] = 0;
-                self.current[to][i] = from_color;
-                count -= 1;
-                if count == 0 {
-                    break;
-                }
-                from_top -= 1;
-                i += 1;
+        if to_top_color == 0 || to_top_color == from_top_color && from_top_count <= to_empty_count {
+            for i in 0..from_top_count {
+                self.current[from][3 - from_empty_count - i] = 0;
+                self.current[to][4 - to_empty_count + i] = from_top_color;
             }
             true
         } else {

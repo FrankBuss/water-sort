@@ -1,4 +1,5 @@
 use std::io::{self, Write};
+
 use std::time::{Duration, Instant};
 
 use bevy::{prelude::*, window::WindowMode};
@@ -27,32 +28,38 @@ fn exit_system(mut exit: EventWriter<AppExit>) {
 */
 
 fn main() {
-    App::build()
-        .insert_resource(WindowDescriptor {
-            title: "Water Sort".to_string(),
-            mode: WindowMode::Windowed,
-            width: 1200.0,
-            height: 600.0,
-            ..Default::default()
-        })
-        .insert_resource(Msaa { samples: 4 })
-        .add_plugins(DefaultPlugins)
-        .add_plugin(PickingPlugin)
-        .add_plugin(InteractablePickingPlugin)
-        .add_plugin(UIPlugin)
-        .insert_resource(FirstSelectedGlass { i: None })
-        .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
-        .add_startup_system(setup.system())
-        .add_system(select_glass.system())
-        .insert_resource(Autoplay {
-            timer: Timer::from_seconds(0.2, true),
-            moves: Vec::new(),
-            running: false,
-            select_first: true,
-        })
-        .add_system(autoplay.system())
-        .add_system(bevy::input::system::exit_on_esc_system.system())
-        .run();
+    let mut app = App::build();
+    app.insert_resource(Msaa { samples: 4 })
+        .add_plugins(DefaultPlugins);
+    #[cfg(target_arch = "wasm32")]
+    app.add_plugin(bevy_webgl2::WebGL2Plugin);
+//    app.add_startup_system(setup.system()).run();
+
+
+    app.insert_resource(WindowDescriptor {
+        title: "Water Sort".to_string(),
+        mode: WindowMode::Windowed,
+        width: 1200.0,
+        height: 600.0,
+        ..Default::default()
+    })
+    .add_plugin(PickingPlugin)
+    .add_plugin(InteractablePickingPlugin)
+    .add_plugin(UIPlugin)
+    .insert_resource(FirstSelectedGlass { i: None })
+    .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
+    .add_startup_system(setup.system())
+    .add_system(select_glass.system())
+    .insert_resource(Autoplay {
+        timer: Timer::from_seconds(0.2, true),
+        moves: Vec::new(),
+        running: false,
+        select_first: true,
+    })
+    .add_system(autoplay.system())
+    .add_system(bevy::input::system::exit_on_esc_system.system())
+    .run();
+
 }
 
 fn add_box(
