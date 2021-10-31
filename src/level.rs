@@ -2,11 +2,11 @@ use bevy::prelude::*;
 use rand::prelude::SliceRandom;
 use rand::prelude::*;
 use rand_pcg::Pcg64;
-use std::cmp;
 use std::collections::HashSet;
 
 type Glass = [u8; 4];
 
+const MAX_COLORS: usize = 12;
 trait GlassExt {
     fn info(&self) -> (u8, usize, usize);
     fn is_empty(&self) -> bool;
@@ -44,12 +44,7 @@ impl GlassExt for Glass {
 
     /// return true, if the glass is empty
     fn is_empty(&self) -> bool {
-        for i in 0..4 {
-            if self[i] > 0 {
-                return false;
-            }
-        }
-        true
+        self.iter().any(|val| *val > 0)
     }
 
     /// return true, if the glass is full with one color
@@ -77,9 +72,9 @@ pub struct Level {
 
 fn hex_to_color(color: u32) -> Color {
     Color::rgb(
-        (((color >> 16) & 0xff) as f32) / 256.0,
-        (((color >> 8) & 0xff) as f32) / 256.0,
-        ((color & 0xff) as f32) / 256.0,
+        (((color >> 16) & 0xff) as f32) / 255.0,
+        (((color >> 8) & 0xff) as f32) / 255.0,
+        ((color & 0xff) as f32) / 255.0,
     )
 }
 
@@ -100,11 +95,7 @@ impl Level {
             hex_to_color(0xFFFF00), // yellow
             hex_to_color(0x9400D3), // violet
         ];
-        if index == 0 {
-            None
-        } else {
-            Some(colors[(index - 1) as usize])
-        }
+        (index > 0).then(|| colors[(index - 1) as usize])
     }
 
     pub fn load_next(&mut self) {
@@ -115,12 +106,7 @@ impl Level {
     }
 
     fn is_one_glass_same_color(&mut self) -> bool {
-        for i in 0..self.current.len() {
-            if self.current[i].is_one_color() {
-                return true;
-            }
-        }
-        false
+        self.current.iter().any(Glass::is_one_color)
     }
 
     pub fn load(level_number: usize) -> Self {
@@ -146,33 +132,25 @@ impl Level {
 
         // otherwise create random level, with level number as seed
         let mut rng = Pcg64::seed_from_u64(level_number as u64);
-        let max_colors = 12;
-        let mut color_count = if level_number < 3 {
-            level_number + 1
-        } else {
-            cmp::min(level_number / 7 + 3, max_colors)
+        let color_count = match level_number {
+            0..=3 => level_number + 1,
+            _ => {
+                let c = (level_number / 7 + 3).min(MAX_COLORS);
+                (c > 8).then(|| c - rng.gen_range(0..=3)).unwrap_or(c)
+            }
         };
-        if color_count > 8 {
-            color_count -= rng.gen_range(0..=3);
-        }
 
         // add empty glasses until the level is solvable
         let mut empty_count = 1;
-        let mut glass_empty: Glass = Default::default();
-        for i in 0..4 {
-            glass_empty[i] = 0;
-        }
-        if color_count == 12 {
+        let glass_empty: Glass = [0; 4];
+        if color_count == MAX_COLORS {
             empty_count = 2;
         }
         loop {
             // create linear array with the amount of one glass for each color
-            let mut mixed = Vec::new();
-            for c in 0..color_count {
-                for _ in 0..4 {
-                    mixed.push((c + 1) as u8);
-                }
-            }
+            let mut mixed = (0..color_count)
+                .flat_map(|c| [c as u8 + 1; 4])
+                .collect::<Vec<_>>();
 
             // add empty glasses until the level is solvable
             mixed.shuffle(&mut rng);
@@ -184,19 +162,15 @@ impl Level {
                 }
                 level.loaded.push(glass);
             }
-            for _ in 0..empty_count {
-                level.loaded.push(glass_empty);
-            }
+            level.loaded.extend(vec![glass_empty; empty_count]);
 
             // break if a solution was found
             level.current = level.loaded.clone();
             let (keys, _size) = level.solve();
             if keys.len() > 0 && !level.is_one_glass_same_color() {
                 break;
-            } else {
-                if empty_count < 2 {
-                    empty_count += 1;
-                }
+            } else if empty_count < 2 {
+                empty_count += 1;
             }
         }
         level.restart();
@@ -249,12 +223,9 @@ impl Level {
             return false;
         }
 
-        // test if glass is empty after movement
-        if from_empty_count + from_top_count < 4 {
-            // glass is not empty, test if there remains at least one item of the same color
-            if from_top_count == count {
-                return false;
-            }
+        // if glass is not empty, test if there remains at least one item of the same color
+        if from_empty_count + from_top_count < 4 && from_top_count == count {
+            return false;
         }
 
         // move water
@@ -292,43 +263,37 @@ impl Level {
         solutions: &mut Vec<Vec<u8>>,
         solution: &mut Vec<u8>,
     ) {
-        fn glass_to_u32(glass: &[u8]) -> u32 {
-            (glass[0] as u32)
-                | ((glass[1] as u32) << 8)
-                | ((glass[2] as u32) << 16)
-                | ((glass[3] as u32) << 24)
-        }
-
         // check all possible moves
         let last = self.current.clone();
         let last_solution = solution.clone();
         for from in 0..self.current.len() {
             for to in 0..self.current.len() {
-                if from != to {
-                    if self.move_water(from, to) {
-                        // add move
-                        solution.push(from as u8);
-                        solution.push(to as u8);
+                if from == to {
+                    continue;
+                }
+                if self.move_water(from, to) {
+                    // add move
+                    solution.push(from as u8);
+                    solution.push(to as u8);
 
-                        // test if winning solution
-                        if self.test_win() {
-                            solutions.push(solution.clone());
-                        } else {
-                            // sort copy of glasses
-                            let mut copy = self.current.clone();
-                            copy.sort_by_key(|a| glass_to_u32(a));
+                    // test if winning solution
+                    if self.test_win() {
+                        solutions.push(solution.clone());
+                    } else {
+                        // sort copy of glasses
+                        let mut copy = self.current.clone();
+                        copy.sort_by_key(|a| u32::from_be_bytes(*a));
 
-                            // if not already tested, then test it recursively
-                            if !tested.contains(&copy) {
-                                tested.insert(copy);
-                                self.solve_impl(tested, solutions, solution);
-                            }
+                        // if not already tested, then test it recursively
+                        if !tested.contains(&copy) {
+                            tested.insert(copy);
+                            self.solve_impl(tested, solutions, solution);
                         }
-
-                        // restore last position
-                        self.current = last.clone();
-                        *solution = last_solution.clone();
                     }
+
+                    // restore last position
+                    self.current = last.clone();
+                    *solution = last_solution.clone();
                 }
             }
         }
@@ -339,11 +304,11 @@ impl Level {
         let mut solutions: Vec<Vec<u8>> = Vec::new();
         let mut solution: Vec<u8> = Vec::new();
         self.solve_impl(&mut tested, &mut solutions, &mut solution);
-        solutions.sort_by_key(|a| a.len());
         let combinations = tested.len() + 1;
         if solutions.is_empty() {
             ("".to_string(), combinations)
         } else {
+            solutions.sort_by_key(|a| a.len());
             (
                 solutions[0].iter().map(|&c| (c + b'a') as char).collect(),
                 combinations,

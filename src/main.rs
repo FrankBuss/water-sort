@@ -21,6 +21,9 @@ struct FirstSelectedGlass {
     i: Option<usize>,
 }
 
+#[derive(Default)]
+struct FPSCounter(Timer, u32);
+
 /*
 fn exit_system(mut exit: EventWriter<AppExit>) {
     exit.send(AppExit);
@@ -33,14 +36,13 @@ fn main() {
         .add_plugins(DefaultPlugins);
     #[cfg(target_arch = "wasm32")]
     app.add_plugin(bevy_webgl2::WebGL2Plugin);
-//    app.add_startup_system(setup.system()).run();
-
 
     app.insert_resource(WindowDescriptor {
         title: "Water Sort".to_string(),
         mode: WindowMode::Windowed,
         width: 1200.0,
         height: 600.0,
+        vsync: false,
         ..Default::default()
     })
     .add_plugin(PickingPlugin)
@@ -58,8 +60,9 @@ fn main() {
     })
     .add_system(autoplay.system())
     .add_system(bevy::input::system::exit_on_esc_system.system())
+    .insert_resource(FPSCounter(Timer::from_seconds(1.0, true), 0))
+    .add_system(fps_counter.system())
     .run();
-
 }
 
 fn add_box(
@@ -105,17 +108,14 @@ fn show_level(
     }
 
     // create new graphics
-    let mut scale = 10.0 / (level.number_of_glasses() as f32);
-    if scale > 1.0 {
-        scale = 1.0;
-    }
+    let scale = (10.0 / (level.number_of_glasses() as f32)).min(1.0);
     let box_size = scale * 0.6;
     let x_start = -5.0;
     let y_start = 0.0;
-    let zp = 1.0;
+    let z_pos = 1.0;
     for x in 0..level.number_of_glasses() {
-        let xp = x_start + (x as f32) * scale;
-        let yp = y_start;
+        let x_pos = x_start + (x as f32) * scale;
+        let y_pos = y_start;
         let wall = 1.0 / 10.0 * scale;
         let color = Color::rgb(1.0, 1.0, 1.0);
         let mut bounding_box = commands.spawn_bundle(PbrBundle {
@@ -127,7 +127,7 @@ fn show_level(
                 max_y: 4.0 * box_size + wall,
                 max_z: box_size,
             })),
-            transform: Transform::from_xyz(xp, yp, zp),
+            transform: Transform::from_xyz(x_pos, y_pos, z_pos),
             material: materials.add(Color::rgba(0.0, 0.0, 0.0, 0.0).into()),
             ..Default::default()
         });
@@ -260,7 +260,7 @@ fn select_glass(
                 }
             }
         }
-        transform.translation.y = if selection.selected() { 0.2 } else { 0.0 }
+        transform.translation.y = selection.selected().then(|| 0.2).unwrap_or(0.0);
     }
 }
 
@@ -286,41 +286,51 @@ fn autoplay(
     mut level_query: Query<&mut Level>,
     mut glasses_query: Query<(&GlassIndex, &mut Selection, &Transform)>,
 ) {
-    if autoplay.running {
-        if autoplay.moves.len() == 0 {
-            autoplay.running = false;
-        } else {
-            autoplay
-                .timer
-                .tick(Duration::from_secs_f32(time.delta_seconds()));
-            if !autoplay.timer.just_finished() {
-                return;
-            }
+    if !autoplay.running {
+        return;
+    }
+    if autoplay.moves.is_empty() {
+        autoplay.running = false;
+        return;
+    }
+    autoplay
+        .timer
+        .tick(Duration::from_secs_f32(time.delta_seconds()));
+    if !autoplay.timer.just_finished() {
+        return;
+    }
 
-            let mut m: usize = autoplay.moves[0].from;
-            if autoplay.select_first {
-                for (_glass, mut selection, _transform) in glasses_query.iter_mut() {
-                    if m == 0 as usize {
-                        selection.set_selected(true);
-                        break;
-                    }
-                    m -= 1;
-                }
-                autoplay.select_first = false;
-            } else {
-                let m = autoplay.moves.remove(0);
-                let mut level = level_query.single_mut().expect("level missing");
-                move_water(&mut level, m.from, m.to);
-                show_level(
-                    &entities,
-                    &mut commands,
-                    &mut meshes,
-                    &mut materials,
-                    &level,
-                );
-                autoplay.select_first = true;
+    let mut from = autoplay.moves[0].from;
+    if autoplay.select_first {
+        for (_glass, mut selection, _transform) in glasses_query.iter_mut() {
+            if from == 0 {
+                selection.set_selected(true);
+                break;
             }
+            from -= 1;
         }
+        autoplay.select_first = false;
+    } else {
+        let move_pair = autoplay.moves.remove(0);
+        let mut level = level_query.single_mut().expect("level missing");
+        move_water(&mut level, move_pair.from, move_pair.to);
+        show_level(
+            &entities,
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+            &level,
+        );
+        autoplay.select_first = true;
+    }
+}
+
+fn fps_counter(time: Res<Time>, mut timer: ResMut<FPSCounter>) {
+    timer.0.tick(time.delta());
+    timer.1 += 1;
+    if timer.0.finished() {
+        println!("fps: {}", timer.1);
+        timer.1 = 0;
     }
 }
 
