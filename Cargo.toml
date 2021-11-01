@@ -23,7 +23,8 @@ web = [
 ]
 
 [dependencies]
-bevy = {version="0.5.0", default-features=false}
+#bevy = {version="0.5.0", default-features=false}
+bevy = {version="0.5.0", default-features=true, features = ["dynamic"]}
 bevy_webgl2 = {version="0.5.0", optional=true}
 bevy_mod_picking = "0.4"
 

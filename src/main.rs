@@ -108,15 +108,17 @@ fn show_level(
     }
 
     // create new graphics
-    let scale = (10.0 / (level.number_of_glasses() as f32)).min(1.0);
+    let scale = (10.0 / (level.number_of_glasses() as f32)).min(0.5);
     let box_size = scale * 0.6;
     let x_start = -5.0;
     let y_start = 0.0;
     let z_pos = 1.0;
+    let float_glass_height = level.glass_height as f32;
     for x in 0..level.number_of_glasses() {
         let x_pos = x_start + (x as f32) * scale;
         let y_pos = y_start;
         let wall = 1.0 / 10.0 * scale;
+        let box_gap = wall / 3.0;
         let color = Color::rgb(1.0, 1.0, 1.0);
         let mut bounding_box = commands.spawn_bundle(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Box {
@@ -124,7 +126,7 @@ fn show_level(
                 min_y: -wall,
                 min_z: 0.0,
                 max_x: box_size + wall,
-                max_y: 4.0 * box_size + wall,
+                max_y: (float_glass_height + box_gap) * box_size + wall,
                 max_z: box_size,
             })),
             transform: Transform::from_xyz(x_pos, y_pos, z_pos),
@@ -136,9 +138,9 @@ fn show_level(
         let parent_id = bounding_box.id();
 
         // boxes
-        for y in 0..4 {
+        for y in 0..level.glass_height {
             if let Some(color) = level.get_color(x, y) {
-                let yp = (y as f32) * box_size;
+                let yp = (y as f32) * (box_size + box_gap);
                 add_box(
                     commands,
                     meshes,
@@ -166,7 +168,7 @@ fn show_level(
             -wall,
             0.0,
             0.0,
-            4.0 * box_size + wall,
+            float_glass_height * (box_size + box_gap) + wall,
             box_size,
         );
         add_box(
@@ -179,7 +181,7 @@ fn show_level(
             -wall,
             0.0,
             box_size + wall,
-            4.0 * box_size + wall,
+            float_glass_height * (box_size + box_gap) + wall,
             box_size,
         );
         add_box(
@@ -208,7 +210,7 @@ fn setup(
     });
 
     // create and show first level
-    let level = Level::load(0);
+    let level = Level::load(0, 8);
     show_level(
         &entities,
         &mut commands,
@@ -337,9 +339,10 @@ fn fps_counter(time: Res<Time>, mut timer: ResMut<FPSCounter>) {
 #[test]
 fn benchmark() {
     println!("level,time,level size,number of configurations,solution length");
+    let glass_height = 8;
     for i in 0..1000000 {
         let start = Instant::now();
-        let mut level = Level::load(i);
+        let mut level = Level::load(i, glass_height);
         let elapsed = start.elapsed().as_secs_f32();
         let (keys, configurations) = level.solve();
         println!(

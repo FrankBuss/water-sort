@@ -21,6 +21,9 @@ impl FromWorld for ButtonMaterials {
 enum GameButton {
     Restart,
     Solution,
+    Size3,
+    Size4,
+    Size5,
 }
 
 struct LevelInfoMarker;
@@ -30,6 +33,9 @@ impl GameButton {
         match self {
             Self::Restart => "Restart".to_string(),
             Self::Solution => "Solution".to_string(),
+            Self::Size3 => "3".to_string(),
+            Self::Size4 => "4".to_string(),
+            Self::Size5 => "5".to_string(),
         }
     }
 }
@@ -125,6 +131,27 @@ fn init_ui(
         &asset_server,
         &button_materials,
     );
+
+    add_button(
+        GameButton::Size3,
+        &mut menu_bar,
+        &asset_server,
+        &button_materials,
+    );
+
+    add_button(
+        GameButton::Size4,
+        &mut menu_bar,
+        &asset_server,
+        &button_materials,
+    );
+
+    add_button(
+        GameButton::Size5,
+        &mut menu_bar,
+        &asset_server,
+        &button_materials,
+    );
 }
 
 fn button_system(
@@ -147,6 +174,25 @@ fn button_system(
             }
         }
     }
+}
+
+fn set_size(
+    size: usize,
+    entities: &Query<Entity, With<GlassIndex>>,
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    level: &mut Level,
+) {
+    level.glass_height = size;
+    level.resize(size);
+    show_level(
+        entities,
+        commands,
+        meshes,
+        materials,
+        level,
+    );
 }
 
 fn button_press_system(
@@ -203,6 +249,39 @@ fn button_press_system(
                         autoplay.moves.push(m);
                     }
                     autoplay.running = true;
+                }
+                GameButton::Size3 => {
+                    if !autoplay.running {
+                        set_size(3,
+                            &entities,
+                            &mut commands,
+                            &mut meshes,
+                            &mut materials,
+                            &mut level,
+                        );
+                    }
+                }
+                GameButton::Size4 => {
+                    if !autoplay.running {
+                        set_size(4,
+                            &entities,
+                            &mut commands,
+                            &mut meshes,
+                            &mut materials,
+                            &mut level,
+                        );
+                    }
+                }
+                GameButton::Size5 => {
+                    if !autoplay.running {
+                        set_size(5,
+                            &entities,
+                            &mut commands,
+                            &mut meshes,
+                            &mut materials,
+                            &mut level,
+                        );
+                    }
                 }
             };
         }
