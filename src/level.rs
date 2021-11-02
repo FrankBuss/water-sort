@@ -7,6 +7,12 @@ use std::collections::HashSet;
 type Glass = Vec<u8>;
 
 const MAX_COLORS: usize = 12;
+
+pub struct Move {
+    pub from: usize,
+    pub to: usize,
+}
+
 trait GlassExt {
     fn info(&self) -> (u8, usize, usize);
     fn is_empty(&self) -> bool;
@@ -64,7 +70,7 @@ impl GlassExt for Glass {
 
     /// convert the elements of this glass to one number for sorting
     fn to_number(&self) -> u64 {
-        let mut result : u64 = 0;
+        let mut result: u64 = 0;
         for i in 0..self.len() {
             result <<= 8;
             result |= self[i] as u64;
@@ -80,6 +86,8 @@ pub struct Level {
     current: Glasses,
     pub number: usize,
     pub glass_height: usize,
+    pub moves: Vec<Move>,
+    pub move_counts: Vec<usize>,
 }
 
 fn hex_to_color(color: u32) -> Color {
@@ -128,11 +136,13 @@ impl Level {
             current: Vec::new(),
             number: level_number,
             glass_height: glass_height,
+            moves: Vec::new(),
+            move_counts: Vec::new(),
         };
 
         // special tutorial level
         if level_number == 0 {
-            let mut glass1 = vec![0;level.glass_height];
+            let mut glass1 = vec![0; level.glass_height];
             let half1 = level.glass_height / 2;
             for i in 0..half1 {
                 glass1[i] = 1;
@@ -140,7 +150,7 @@ impl Level {
             level.loaded.push(glass1);
 
             let half2 = level.glass_height - half1;
-            let mut glass2 = vec![0;level.glass_height];
+            let mut glass2 = vec![0; level.glass_height];
             for i in 0..half2 {
                 glass2[i] = 1;
             }
@@ -159,6 +169,7 @@ impl Level {
                 (c > 8).then(|| c - rng.gen_range(0..=3)).unwrap_or(c)
             }
         };
+        let color_count = 8;
 
         // add empty glasses until the level is solvable
         let mut empty_count = 1;
@@ -178,7 +189,7 @@ impl Level {
             // fill level with shuffled colors
             level.loaded = Vec::new();
             for c in 0..color_count {
-                let mut glass: Glass = vec![0;level.glass_height];
+                let mut glass: Glass = vec![0; level.glass_height];
                 for i in 0..level.glass_height {
                     glass[i] = mixed[c * level.glass_height + i];
                 }
@@ -201,7 +212,7 @@ impl Level {
         level
     }
 
-    pub fn move_water(&mut self, from: usize, to: usize) -> bool {
+    pub fn move_water(&mut self, from: usize, to: usize, save_move: bool) -> bool {
         // test if there is something to move
         if self.current[from][0] == 0 {
             return false;
@@ -215,6 +226,11 @@ impl Level {
 
         // move, if target is empty, or if it is the same color and if there is enough room
         if to_top_color == 0 || to_top_color == from_top_color && from_top_count <= to_empty_count {
+            if save_move {
+                let last_move = Move { from: from, to: to };
+                self.moves.push(last_move);
+                self.move_counts.push(from_top_count);
+            }
             for i in 0..from_top_count {
                 self.current[from][self.glass_height - 1 - from_empty_count - i] = 0;
                 self.current[to][self.glass_height - to_empty_count + i] = from_top_color;
@@ -225,7 +241,7 @@ impl Level {
         }
     }
 
-    pub fn _move_reverse(&mut self, from: usize, to: usize, count: usize) -> bool {
+    pub fn move_reverse(&mut self, from: usize, to: usize, count: usize) -> bool {
         // get "from" glass info
         let (from_top_color, from_top_count, from_empty_count) = self.current[from].info();
 
@@ -295,7 +311,7 @@ impl Level {
                 if from == to {
                     continue;
                 }
-                if self.move_water(from, to) {
+                if self.move_water(from, to, false) {
                     // add move
                     solution.push(from as u8);
                     solution.push(to as u8);
@@ -345,5 +361,15 @@ impl Level {
         self.glass_height = size;
         self.loaded = level2.loaded.clone();
         self.restart();
+    }
+
+    pub fn undo(&mut self) -> bool {
+        let moves = self.moves.len();
+        if moves > 0 {
+            let last_move = self.moves.remove(moves - 1);
+            let last_move_count = self.move_counts.remove(moves - 1);
+            return self.move_reverse(last_move.to, last_move.from, last_move_count);
+        }
+        false
     }
 }

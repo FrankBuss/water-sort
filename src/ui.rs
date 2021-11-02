@@ -20,6 +20,7 @@ impl FromWorld for ButtonMaterials {
 
 enum GameButton {
     Restart,
+    Undo,
     Solution,
     Size3,
     Size4,
@@ -32,6 +33,7 @@ impl GameButton {
     fn name(&self) -> String {
         match self {
             Self::Restart => "Restart".to_string(),
+            Self::Undo => "Undo".to_string(),
             Self::Solution => "Solution".to_string(),
             Self::Size3 => "3".to_string(),
             Self::Size4 => "4".to_string(),
@@ -101,6 +103,12 @@ fn init_ui(
     });
     add_button(
         GameButton::Restart,
+        &mut menu_bar,
+        &asset_server,
+        &button_materials,
+    );
+    add_button(
+        GameButton::Undo,
         &mut menu_bar,
         &asset_server,
         &button_materials,
@@ -186,13 +194,7 @@ fn set_size(
 ) {
     level.glass_height = size;
     level.resize(size);
-    show_level(
-        entities,
-        commands,
-        meshes,
-        materials,
-        level,
-    );
+    show_level(entities, commands, meshes, materials, level);
 }
 
 fn button_press_system(
@@ -218,6 +220,19 @@ fn button_press_system(
                             &mut materials,
                             &level,
                         );
+                    }
+                }
+                GameButton::Undo => {
+                    if !autoplay.running {
+                        if level.undo() {
+                            show_level(
+                                &entities,
+                                &mut commands,
+                                &mut meshes,
+                                &mut materials,
+                                &level,
+                            );
+                        }
                     }
                 }
                 GameButton::Solution => {
@@ -252,7 +267,8 @@ fn button_press_system(
                 }
                 GameButton::Size3 => {
                     if !autoplay.running {
-                        set_size(3,
+                        set_size(
+                            3,
                             &entities,
                             &mut commands,
                             &mut meshes,
@@ -263,7 +279,8 @@ fn button_press_system(
                 }
                 GameButton::Size4 => {
                     if !autoplay.running {
-                        set_size(4,
+                        set_size(
+                            4,
                             &entities,
                             &mut commands,
                             &mut meshes,
@@ -274,7 +291,8 @@ fn button_press_system(
                 }
                 GameButton::Size5 => {
                     if !autoplay.running {
-                        set_size(5,
+                        set_size(
+                            5,
                             &entities,
                             &mut commands,
                             &mut meshes,

@@ -222,7 +222,7 @@ fn setup(
 }
 
 fn move_water(level: &mut Level, from: usize, to: usize) {
-    level.move_water(from, to);
+    level.move_water(from, to, true);
     //level.move_reverse(from, to, 2);
     if level.test_win() {
         level.load_next();
@@ -264,11 +264,6 @@ fn select_glass(
         }
         transform.translation.y = selection.selected().then(|| 0.2).unwrap_or(0.0);
     }
-}
-
-struct Move {
-    from: usize,
-    to: usize,
 }
 
 struct Autoplay {
