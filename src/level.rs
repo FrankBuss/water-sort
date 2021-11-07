@@ -1,12 +1,23 @@
+/*
+file format, per level:
+u8 number of glasses
+vec<vec<u8>> level data
+*/
 use bevy::prelude::*;
 use rand::prelude::SliceRandom;
 use rand::prelude::*;
 use rand_pcg::Pcg64;
 use std::collections::HashSet;
+use std::fs::File;
+use std::io::prelude::*;
+use std::io::{self, prelude::*, SeekFrom};
+
+use crate::level;
 
 type Glass = Vec<u8>;
 
 const MAX_COLORS: usize = 12;
+const MAX_GLASSES_PER_LEVEL: usize = 16;
 
 pub struct Move {
     pub from: usize,
@@ -99,6 +110,17 @@ fn hex_to_color(color: u32) -> Color {
 }
 
 impl Level {
+    pub fn new(level_number: usize, glass_height: usize) -> Self {
+        Level {
+            loaded: Vec::new(),
+            current: Vec::new(),
+            number: level_number,
+            glass_height: glass_height,
+            moves: Vec::new(),
+            move_counts: Vec::new(),
+        }
+    }
+
     pub fn get_color(&self, x: usize, y: usize) -> Option<Color> {
         let index = self.current[x][y];
         let colors = [
@@ -130,6 +152,29 @@ impl Level {
     }
 
     pub fn load(level_number: usize, glass_height: usize) -> Self {
+        let mut level = Level::new(level_number, glass_height);
+
+        let filename = Level::create_levels_filename(glass_height);
+        let mut file = File::open(filename).unwrap();
+        let ofs = ((MAX_GLASSES_PER_LEVEL * glass_height + 1) * level_number) as u64;
+        file.seek(SeekFrom::Start(
+            ofs,
+        ))
+        .unwrap();
+
+        let mut byte = [0u8; 1];
+        file.read_exact(&mut byte).unwrap();
+        for _ in 0..byte[0] as usize {
+            let mut glass = vec![0; glass_height];
+            file.read_exact(&mut glass).unwrap();
+            level.loaded.push(glass);
+        }
+
+        level.restart();
+        level
+    }
+
+    pub fn create(level_number: usize, glass_height: usize) -> Self {
         // init new level struct
         let mut level = Level {
             loaded: Vec::new(),
@@ -169,7 +214,6 @@ impl Level {
                 (c > 8).then(|| c - rng.gen_range(0..=3)).unwrap_or(c)
             }
         };
-        let color_count = 8;
 
         // add empty glasses until the level is solvable
         let mut empty_count = 1;
@@ -371,5 +415,20 @@ impl Level {
             return self.move_reverse(last_move.to, last_move.from, last_move_count);
         }
         false
+    }
+
+    pub fn save_to_file(&self, file: &mut File) {
+        file.write_all(&[self.loaded.len() as u8]).unwrap();
+        for glass in &self.loaded {
+            file.write_all(glass.as_ref()).unwrap();
+        }
+        let empty = vec![0; self.glass_height];
+        for _ in 0..MAX_GLASSES_PER_LEVEL - self.loaded.len() {
+            file.write_all(empty.as_ref()).unwrap();
+        }
+    }
+
+    pub fn create_levels_filename(glass_height: usize) -> String {
+        format!("levels{}.bin", glass_height)
     }
 }

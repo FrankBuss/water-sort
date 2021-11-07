@@ -1,14 +1,20 @@
+use std::fs::File;
+use std::io::prelude::*;
 use std::io::{self, Write};
+use std::process;
 
 use std::time::{Duration, Instant};
 
+use bevy::utils::tracing::Subscriber;
 use bevy::{prelude::*, window::WindowMode};
 use bevy_mod_picking::{
     InteractablePickingPlugin, PickableBundle, PickingCameraBundle, PickingPlugin, Selection,
 };
-
 mod ui;
 use ui::*;
+
+mod game_ui;
+use game_ui::*;
 
 mod level;
 use level::*;
@@ -30,7 +36,23 @@ fn exit_system(mut exit: EventWriter<AppExit>) {
 }
 */
 
+fn save_levels(glass_height: usize) {
+    let filename = Level::create_levels_filename(glass_height);
+    let mut file = File::create(filename).unwrap();
+    for level_number in 0..10 {
+        let level = Level::create(level_number, glass_height);
+        level.save_to_file(&mut file);
+    }
+}
+
 fn main() {
+    /*
+    for i in 3..=8 {
+        save_levels(i);
+    }
+    process::exit(0);
+    */
+
     let mut app = App::build();
     app.insert_resource(Msaa { samples: 4 })
         .add_plugins(DefaultPlugins);
@@ -48,6 +70,7 @@ fn main() {
     .add_plugin(PickingPlugin)
     .add_plugin(InteractablePickingPlugin)
     .add_plugin(UIPlugin)
+    .add_plugin(GameUIPlugin)
     .insert_resource(FirstSelectedGlass { i: None })
     .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
     .add_startup_system(setup.system())
@@ -195,6 +218,8 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
+    audio: Res<Audio>,
 ) {
     // set up the camera
     let mut camera = PerspectiveCameraBundle::new_3d();
@@ -210,7 +235,7 @@ fn setup(
     });
 
     // create and show first level
-    let level = Level::load(0, 8);
+    let level = Level::load(0, 4);
     show_level(
         &entities,
         &mut commands,
@@ -219,6 +244,9 @@ fn setup(
         &level,
     );
     commands.spawn().insert(level);
+
+    let music = asset_server.load("sounds/jelsonic-another-brilliant-age.mp3");
+    audio.play(music);
 }
 
 fn move_water(level: &mut Level, from: usize, to: usize) {
@@ -333,6 +361,7 @@ fn fps_counter(time: Res<Time>, mut timer: ResMut<FPSCounter>) {
 
 #[test]
 fn benchmark() {
+    let mut spaces = spaces;
     println!("level,time,level size,number of configurations,solution length");
     let glass_height = 8;
     for i in 0..1000000 {

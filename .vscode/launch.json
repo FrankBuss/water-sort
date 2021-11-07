@@ -8,15 +8,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'water-sort'",
+            "name": "Debug executable 'watersort'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=water-sort",
-                    "--package=water-sort"
+                    "--bin=watersort",
+                    "--package=watersort"
                 ],
                 "filter": {
-                    "name": "water-sort",
+                    "name": "watersort",
                     "kind": "bin"
                 }
             },
@@ -26,16 +26,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'water-sort'",
+            "name": "Debug unit tests in executable 'watersort'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=water-sort",
-                    "--package=water-sort"
+                    "--bin=watersort",
+                    "--package=watersort"
                 ],
                 "filter": {
-                    "name": "water-sort",
+                    "name": "watersort",
                     "kind": "bin"
                 }
             },
