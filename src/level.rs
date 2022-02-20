@@ -92,6 +92,7 @@ impl GlassExt for Glass {
 
 type Glasses = Vec<Glass>;
 
+#[derive(Component)]
 pub struct Level {
     loaded: Glasses,
     current: Glasses,

@@ -1,3 +1,12 @@
+/*use bevy::prelude::*;
+use bevy_mod_picking::{
+    DebugCursorPickingPlugin, DebugEventsPickingPlugin, DefaultPickingPlugins, PickableBundle,
+    PickingCameraBundle,
+};
+*/
+
+
+
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{self, Write};
@@ -13,12 +22,16 @@ use bevy_mod_picking::{
 mod ui;
 use ui::*;
 
+
+/*
 mod game_ui;
 use game_ui::*;
+*/
 
 mod level;
 use level::*;
 
+#[derive(Component)]
 struct GlassIndex {
     i: usize,
 }
@@ -47,45 +60,49 @@ fn save_levels(glass_height: usize) {
 
 fn main() {
     /*
-    for i in 3..=8 {
-        save_levels(i);
-    }
-    process::exit(0);
-    */
+    App::new()
+        .insert_resource(WindowDescriptor {
+            vsync: false, // Disabled for this demo to reduce input latency
+            ..Default::default()
+        })
+        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPickingPlugins) // <- Adds Picking, Interaction, and Highlighting plugins.
+        .add_plugin(DebugCursorPickingPlugin) // <- Adds the green debug cursor.
+        .add_plugin(DebugEventsPickingPlugin) // <- Adds debug event logging.
+        .add_startup_system(setup)
+        .run();*/
 
-    let mut app = App::build();
-    app.insert_resource(Msaa { samples: 4 })
-        .add_plugins(DefaultPlugins);
-    #[cfg(target_arch = "wasm32")]
-    app.add_plugin(bevy_webgl2::WebGL2Plugin);
-
-    app.insert_resource(WindowDescriptor {
-        title: "Water Sort".to_string(),
-        mode: WindowMode::Windowed,
-        width: 1200.0,
-        height: 600.0,
-        vsync: false,
-        ..Default::default()
-    })
-    .add_plugin(PickingPlugin)
-    .add_plugin(InteractablePickingPlugin)
-    .add_plugin(UIPlugin)
-    .add_plugin(GameUIPlugin)
-    .insert_resource(FirstSelectedGlass { i: None })
-    .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
-    .add_startup_system(setup.system())
-    .add_system(select_glass.system())
-    .insert_resource(Autoplay {
-        timer: Timer::from_seconds(0.2, true),
-        moves: Vec::new(),
-        running: false,
-        select_first: true,
-    })
-    .add_system(autoplay.system())
-    .add_system(bevy::input::system::exit_on_esc_system.system())
-    .insert_resource(FPSCounter(Timer::from_seconds(1.0, true), 0))
-    .add_system(fps_counter.system())
-    .run();
+        App::new()
+        .insert_resource(Msaa { samples: 4 })
+            .add_plugins(DefaultPlugins)
+        .insert_resource(WindowDescriptor {
+            title: "Water Sort".to_string(),
+            mode: WindowMode::Windowed,
+            width: 1200.0,
+            height: 600.0,
+            vsync: false,
+            ..Default::default()
+        })
+        .add_plugin(PickingPlugin)
+        .add_plugin(InteractablePickingPlugin)
+        .add_plugin(UIPlugin)
+        //.add_plugin(GameUIPlugin)
+        .insert_resource(FirstSelectedGlass { i: None })
+        .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
+        .add_startup_system(setup)
+        .add_system(select_glass)
+        .insert_resource(Autoplay {
+            timer: Timer::from_seconds(0.2, true),
+            moves: Vec::new(),
+            running: false,
+            select_first: true,
+        })
+        .add_system(autoplay)
+        .add_system(bevy::input::system::exit_on_esc_system)
+        .insert_resource(FPSCounter(Timer::from_seconds(1.0, true), 0))
+        .add_system(fps_counter)
+        .run();
+    
 }
 
 fn add_box(
@@ -229,8 +246,16 @@ fn setup(
         .insert_bundle(PickingCameraBundle::default());
 
     // light
-    commands.spawn_bundle(LightBundle {
-        transform: Transform::from_xyz(3.0, 8.0, 5.0),
+    commands.spawn_bundle(PointLightBundle {
+        point_light: PointLight {
+            color: Color::rgb(1.0, 1.0, 1.0),
+            intensity: 800.0, // Roughly a 60W non-halogen incandescent bulb
+            range: 20.0,
+            radius: 0.0,
+            shadows_enabled: false,
+            shadow_depth_bias: PointLight::DEFAULT_SHADOW_DEPTH_BIAS,
+            shadow_normal_bias: PointLight::DEFAULT_SHADOW_NORMAL_BIAS,
+        },
         ..Default::default()
     });
 
@@ -267,7 +292,7 @@ fn select_glass(
     entities: Query<Entity, With<GlassIndex>>,
     autoplay: ResMut<Autoplay>,
 ) {
-    let mut level = level_query.single_mut().expect("level missing");
+    let mut level = level_query.single_mut();
     for (glass, mut selection, mut transform) in glasses_query.iter_mut() {
         if !autoplay.running {
             if selection.selected() {
@@ -337,7 +362,7 @@ fn autoplay(
         autoplay.select_first = false;
     } else {
         let move_pair = autoplay.moves.remove(0);
-        let mut level = level_query.single_mut().expect("level missing");
+        let mut level = level_query.single_mut();
         move_water(&mut level, move_pair.from, move_pair.to);
         show_level(
             &entities,
@@ -359,6 +384,7 @@ fn fps_counter(time: Res<Time>, mut timer: ResMut<FPSCounter>) {
     }
 }
 
+/*
 #[test]
 fn benchmark() {
     let mut spaces = spaces;
@@ -380,3 +406,7 @@ fn benchmark() {
         io::stdout().flush().unwrap();
     }
 }
+*/
+
+
+

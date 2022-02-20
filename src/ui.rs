@@ -18,6 +18,7 @@ impl FromWorld for ButtonMaterials {
     }
 }
 
+#[derive(Component)]
 enum GameButton {
     Restart,
     Undo,
@@ -27,6 +28,7 @@ enum GameButton {
     Size5,
 }
 
+#[derive(Component)]
 struct LevelInfoMarker;
 
 impl GameButton {
@@ -61,7 +63,7 @@ fn add_button(
                     align_items: AlignItems::Center,
                     ..Default::default()
                 },
-                material: button_materials.normal.clone(),
+                //material: button_materials.normal.clone(),
                 ..Default::default()
             })
             .with_children(|parent| {
@@ -98,7 +100,7 @@ fn init_ui(
             justify_content: JustifyContent::FlexStart,
             ..Default::default()
         },
-        material: materials.add(Color::rgb(0.2, 0.2, 0.2).into()),
+        //material: materials.add(Color::rgb(0.2, 0.2, 0.2).into()),
         ..Default::default()
     });
     add_button(
@@ -206,7 +208,7 @@ fn button_press_system(
     entities: Query<Entity, With<GlassIndex>>,
     mut autoplay: ResMut<Autoplay>,
 ) {
-    let mut level = level_query.single_mut().expect("level missing");
+    let mut level = level_query.single_mut();
     for (interaction, button) in query.iter() {
         if *interaction == Interaction::Clicked {
             match button {
@@ -307,18 +309,18 @@ fn button_press_system(
 }
 
 fn level_info(level_query: Query<&Level>, mut query: Query<(&mut Text, &LevelInfoMarker)>) {
-    let level = level_query.single().expect("level missing");
-    let (mut text, _marker) = query.single_mut().unwrap();
+    let level = level_query.single();
+    let (mut text, _marker) = query.single_mut();
     text.sections[0].value = format!("Level: {}", level.number + 1);
 }
 
 pub struct UIPlugin;
 impl Plugin for UIPlugin {
-    fn build(&self, app: &mut AppBuilder) {
+    fn build(&self, app: &mut App) {
         app.init_resource::<ButtonMaterials>()
-            .add_startup_system(init_ui.system())
-            .add_system(button_system.system())
-            .add_system(button_press_system.system())
-            .add_system(level_info.system());
+            .add_startup_system(init_ui)
+            .add_system(button_system)
+            .add_system(button_press_system)
+            .add_system(level_info);
     }
 }
