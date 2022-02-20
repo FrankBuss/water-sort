@@ -10,9 +10,7 @@ use rand_pcg::Pcg64;
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::prelude::*;
-use std::io::{self, prelude::*, SeekFrom};
-
-use crate::level;
+use std::io::SeekFrom;
 
 type Glass = Vec<u8>;
 

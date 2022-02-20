@@ -5,28 +5,17 @@ use bevy_mod_picking::{
 };
 */
 
-
-
 use std::fs::File;
-use std::io::prelude::*;
-use std::io::{self, Write};
-use std::process;
+use std::env;
 
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-use bevy::utils::tracing::Subscriber;
 use bevy::{prelude::*, window::WindowMode};
 use bevy_mod_picking::{
     InteractablePickingPlugin, PickableBundle, PickingCameraBundle, PickingPlugin, Selection,
 };
 mod ui;
 use ui::*;
-
-
-/*
-mod game_ui;
-use game_ui::*;
-*/
 
 mod level;
 use level::*;
@@ -59,30 +48,27 @@ fn save_levels(glass_height: usize) {
 }
 
 fn main() {
-    /*
-    App::new()
-        .insert_resource(WindowDescriptor {
-            vsync: false, // Disabled for this demo to reduce input latency
-            ..Default::default()
-        })
-        .add_plugins(DefaultPlugins)
-        .add_plugins(DefaultPickingPlugins) // <- Adds Picking, Interaction, and Highlighting plugins.
-        .add_plugin(DebugCursorPickingPlugin) // <- Adds the green debug cursor.
-        .add_plugin(DebugEventsPickingPlugin) // <- Adds debug event logging.
-        .add_startup_system(setup)
-        .run();*/
+    let args: Vec<String> = env::args().collect();
+    if args.len() > 1 {
+        if args[1] == "create" {
+            for i in 3..=8 {
+                save_levels(i);
+            }
+        }
+    }
+    println!("{:?}", args);
 
-        App::new()
+    App::new()
         .insert_resource(Msaa { samples: 4 })
-            .add_plugins(DefaultPlugins)
         .insert_resource(WindowDescriptor {
             title: "Water Sort".to_string(),
             mode: WindowMode::Windowed,
             width: 1200.0,
             height: 600.0,
-            vsync: false,
+            vsync: true,
             ..Default::default()
         })
+        .add_plugins(DefaultPlugins)
         .add_plugin(PickingPlugin)
         .add_plugin(InteractablePickingPlugin)
         .add_plugin(UIPlugin)
@@ -102,7 +88,6 @@ fn main() {
         .insert_resource(FPSCounter(Timer::from_seconds(1.0, true), 0))
         .add_system(fps_counter)
         .run();
-    
 }
 
 fn add_box(
@@ -154,6 +139,8 @@ fn show_level(
     let y_start = 0.0;
     let z_pos = 1.0;
     let float_glass_height = level.glass_height as f32;
+    let mut mat: StandardMaterial = Color::rgba(0.0, 0.0, 0.0, 0.0).into();
+    mat.alpha_mode = AlphaMode::Mask(1.0);
     for x in 0..level.number_of_glasses() {
         let x_pos = x_start + (x as f32) * scale;
         let y_pos = y_start;
@@ -170,7 +157,7 @@ fn show_level(
                 max_z: box_size,
             })),
             transform: Transform::from_xyz(x_pos, y_pos, z_pos),
-            material: materials.add(Color::rgba(0.0, 0.0, 0.0, 0.0).into()),
+            material: materials.add(mat.clone()),
             ..Default::default()
         });
         bounding_box.insert_bundle(PickableBundle::default());
@@ -248,14 +235,11 @@ fn setup(
     // light
     commands.spawn_bundle(PointLightBundle {
         point_light: PointLight {
-            color: Color::rgb(1.0, 1.0, 1.0),
-            intensity: 800.0, // Roughly a 60W non-halogen incandescent bulb
-            range: 20.0,
-            radius: 0.0,
-            shadows_enabled: false,
-            shadow_depth_bias: PointLight::DEFAULT_SHADOW_DEPTH_BIAS,
-            shadow_normal_bias: PointLight::DEFAULT_SHADOW_NORMAL_BIAS,
+            intensity: 1500.0,
+            shadows_enabled: true,
+            ..Default::default()
         },
+        transform: Transform::from_xyz(4.0, 8.0, 4.0),
         ..Default::default()
     });
 
@@ -407,6 +391,3 @@ fn benchmark() {
     }
 }
 */
-
-
-
